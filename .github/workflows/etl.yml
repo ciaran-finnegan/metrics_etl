@@ -73,9 +73,18 @@ jobs:
         # Create credentials directory
         mkdir -p credentials
         
-        # Write Google OAuth2 credentials
-        echo "${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}" > credentials/client_secrets.json
-        echo "${{ secrets.GOOGLE_SHEETS_TOKEN }}" > credentials/token.json
+        # Debug: Print directory contents before
+        echo "Directory contents before:"
+        ls -la
+        
+        # Write Google OAuth2 credentials with explicit paths
+        echo '${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}' > ./credentials/client_secrets.json
+        echo '${{ secrets.GOOGLE_SHEETS_TOKEN }}' > ./credentials/token.json
+        
+        # Debug: Print directory contents after
+        echo "Directory contents after:"
+        ls -la
+        ls -la credentials/
         
         # Run the pipeline
         python main.py
