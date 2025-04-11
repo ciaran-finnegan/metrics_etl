@@ -1,0 +1,12 @@
+signals:
+  global_m2_money_supply:
+    extractor: fred_extractor
+    extractor_params:
+      series_id: "M2SL"
+    secrets: ["FRED_API_KEY"]
+    secret_mapping:
+      api_key: "FRED_API_KEY"
+    transformer: m2_transformer
+  crypto_fear_greed:
+    extractor: alternative_extractor
+    transformer: fear_greed_transformer
