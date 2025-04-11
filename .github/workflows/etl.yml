@@ -26,42 +26,45 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
-      - name: Check secrets
+      - name: Check configuration
         run: |
           # Check if all required secrets are present
           if [ -z "${{ secrets.FRED_API_KEY }}" ]; then
             echo "Error: FRED_API_KEY is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
-            echo "Error: SUPABASE_URL is not set"
-            exit 1
-          fi
           if [ -z "${{ secrets.SUPABASE_KEY }}" ]; then
             echo "Error: SUPABASE_KEY is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.GOOGLE_SHEET_NAME }}" ]; then
-            echo "Error: GOOGLE_SHEET_NAME is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.GOOGLE_SHEET_WORKSHEET }}" ]; then
-            echo "Error: GOOGLE_SHEET_WORKSHEET is not set"
             exit 1
           fi
           if [ -z "${{ secrets.GOOGLE_CREDENTIALS }}" ]; then
             echo "Error: GOOGLE_CREDENTIALS is not set"
             exit 1
           fi
-          echo "All required secrets are present"
+          
+          # Check if all required environment variables are present
+          if [ -z "${{ vars.SUPABASE_URL }}" ]; then
+            echo "Error: SUPABASE_URL is not set"
+            exit 1
+          fi
+          if [ -z "${{ vars.GOOGLE_SHEET_NAME }}" ]; then
+            echo "Error: GOOGLE_SHEET_NAME is not set"
+            exit 1
+          fi
+          if [ -z "${{ vars.GOOGLE_SHEET_WORKSHEET }}" ]; then
+            echo "Error: GOOGLE_SHEET_WORKSHEET is not set"
+            exit 1
+          fi
+          
+          echo "All required configuration is present"
           
       - name: Run ETL pipeline
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          GOOGLE_SHEET_NAME: ${{ secrets.GOOGLE_SHEET_NAME }}
-          GOOGLE_SHEET_WORKSHEET: ${{ secrets.GOOGLE_SHEET_WORKSHEET }}
+          GOOGLE_SHEET_NAME: ${{ vars.GOOGLE_SHEET_NAME }}
+          GOOGLE_SHEET_WORKSHEET: ${{ vars.GOOGLE_SHEET_WORKSHEET }}
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python pipeline.py
         
