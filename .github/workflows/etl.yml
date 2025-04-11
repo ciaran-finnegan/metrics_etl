@@ -66,7 +66,10 @@ jobs:
           GOOGLE_SHEET_NAME: ${{ vars.GOOGLE_SHEET_NAME }}
           GOOGLE_SHEET_WORKSHEET: ${{ vars.GOOGLE_SHEET_WORKSHEET }}
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
-        run: python pipeline.py
+        run: |
+          # Create credentials file from secret
+          echo "$GOOGLE_CREDENTIALS" > credentials.json
+          python main.py
         
       - name: Notify on failure
         if: failure()
