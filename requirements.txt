@@ -1,4 +1,4 @@
-requests==2.31.0
+requests==2.32.2
 supabase==1.0.3
 gspread==5.11.0
 python-dotenv==1.0.0
