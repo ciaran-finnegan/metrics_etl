@@ -1,0 +1,97 @@
+name: ETL Pipeline
+on:
+  schedule:
+    - cron: "0 18 * * *"  # Runs at 18:00 UTC (05:00 AEDT) daily
+  workflow_dispatch:
+
+jobs:
+  run-etl:
+    environment: production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Validate Secrets
+        run: |
+          # Check if all required secrets are present
+          if [ -z "${{ secrets.FRED_API_KEY }}" ]; then
+            echo "Error: FRED_API_KEY is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.ALTERNATIVE_API_KEY }}" ]; then
+            echo "Error: ALTERNATIVE_API_KEY is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
+            echo "Error: SUPABASE_URL is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SUPABASE_KEY }}" ]; then
+            echo "Error: SUPABASE_KEY is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.GOOGLE_SHEET_NAME }}" ]; then
+            echo "Error: GOOGLE_SHEET_NAME is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.GOOGLE_SHEET_WORKSHEET }}" ]; then
+            echo "Error: GOOGLE_SHEET_WORKSHEET is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.GOOGLE_CREDENTIALS }}" ]; then
+            echo "Error: GOOGLE_CREDENTIALS is not set"
+            exit 1
+          fi
+          echo "All required secrets are present"
+      
+      - name: Run ETL
+        env:
+          # API Keys
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          ALTERNATIVE_API_KEY: ${{ secrets.ALTERNATIVE_API_KEY }}
+          
+          # Supabase Configuration
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          
+          # Google Sheets Configuration
+          GOOGLE_SHEET_NAME: ${{ secrets.GOOGLE_SHEET_NAME }}
+          GOOGLE_SHEET_WORKSHEET: ${{ secrets.GOOGLE_SHEET_WORKSHEET }}
+          
+          # Google Service Account
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: |
+          # Create credentials.json from secret with proper JSON formatting
+          echo "$GOOGLE_CREDENTIALS" | jq . > credentials.json
+          
+          # Verify the credentials file was created correctly
+          if [ ! -f credentials.json ]; then
+            echo "Error: Failed to create credentials.json"
+            exit 1
+          fi
+          
+          # Run the ETL pipeline
+          python main.py
+          
+      - name: Notify on Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'ETL Pipeline Failed',
+              body: 'The ETL pipeline failed. Please check the workflow run for details.',
+              labels: ['bug', 'etl']
+            })
