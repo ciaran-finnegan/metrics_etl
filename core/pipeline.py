@@ -59,14 +59,16 @@ class ETLEngine:
                         key=os.getenv("SUPABASE_KEY")
                     ),
                     GoogleSheetsLoader(
-                        creds_path="credentials.json",
-                        sheet_name="Financial Signals"
+                        credentials_path="./credentials/client_secrets.json",
+                        token_path="./credentials/token.json",
+                        spreadsheet_id=os.getenv("GOOGLE_SHEET_NAME")
                     )
                 ]
 
                 for loader in loaders:
                     try:
-                        loader.load(transformed_data)
+                        loader.init()
+                        loader.append_row(transformed_data)
                     except LoadError as e:
                         logger.error(f"Loader failed: {e}")
                 
