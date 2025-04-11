@@ -29,4 +29,13 @@ build/
 # Local development
 .DS_Store
 
+# Credentials
+credentials/
+*.json
+!requirements.json
+!package.json
+
 credentials.json
+client_secret.json
+token.json
+credentials/*.json

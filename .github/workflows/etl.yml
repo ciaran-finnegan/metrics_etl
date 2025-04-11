@@ -14,78 +14,87 @@ jobs:
     environment: production
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-          
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          
-      - name: Check configuration
-        run: |
-          # Check if all required secrets are present
-          if [ -z "${{ secrets.FRED_API_KEY }}" ]; then
-            echo "Error: FRED_API_KEY is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.SUPABASE_KEY }}" ]; then
-            echo "Error: SUPABASE_KEY is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.GOOGLE_CREDENTIALS }}" ]; then
-            echo "Error: GOOGLE_CREDENTIALS is not set"
-            exit 1
-          fi
-          
-          # Check if all required environment variables are present
-          if [ -z "${{ vars.SUPABASE_URL }}" ]; then
-            echo "Error: SUPABASE_URL is not set"
-            exit 1
-          fi
-          if [ -z "${{ vars.GOOGLE_SHEET_NAME }}" ]; then
-            echo "Error: GOOGLE_SHEET_NAME is not set"
-            exit 1
-          fi
-          if [ -z "${{ vars.GOOGLE_SHEET_WORKSHEET }}" ]; then
-            echo "Error: GOOGLE_SHEET_WORKSHEET is not set"
-            exit 1
-          fi
-          
-          echo "All required configuration is present"
-          
-      - name: Run ETL pipeline
-        env:
-          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          GOOGLE_SHEET_NAME: ${{ vars.GOOGLE_SHEET_NAME }}
-          GOOGLE_SHEET_WORKSHEET: ${{ vars.GOOGLE_SHEET_WORKSHEET }}
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
-        run: |
-          # Create credentials file from secret
-          echo "$GOOGLE_CREDENTIALS" > credentials.json
-          python main.py
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
         
-      - name: Notify on failure
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            try {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: 'ETL Pipeline Failed',
-                body: 'The ETL pipeline failed. Please check the workflow run for details.',
-                labels: ['bug', 'etl']
-              });
-            } catch (error) {
-              console.error('Failed to create issue:', error);
-              // Don't fail the workflow if issue creation fails
-            }
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Check configuration
+      run: |
+        # Check if all required secrets are present
+        if [ -z "${{ secrets.FRED_API_KEY }}" ]; then
+          echo "Error: FRED_API_KEY is not set"
+          exit 1
+        fi
+        if [ -z "${{ secrets.SUPABASE_KEY }}" ]; then
+          echo "Error: SUPABASE_KEY is not set"
+          exit 1
+        fi
+        if [ -z "${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}" ]; then
+          echo "Error: GOOGLE_SHEETS_CREDENTIALS is not set"
+          exit 1
+        fi
+        if [ -z "${{ secrets.GOOGLE_SHEETS_TOKEN }}" ]; then
+          echo "Error: GOOGLE_SHEETS_TOKEN is not set"
+          exit 1
+        fi
+        
+        # Check if all required environment variables are present
+        if [ -z "${{ vars.SUPABASE_URL }}" ]; then
+          echo "Error: SUPABASE_URL is not set"
+          exit 1
+        fi
+        if [ -z "${{ vars.GOOGLE_SHEET_NAME }}" ]; then
+          echo "Error: GOOGLE_SHEET_NAME is not set"
+          exit 1
+        fi
+        if [ -z "${{ vars.GOOGLE_SHEET_WORKSHEET }}" ]; then
+          echo "Error: GOOGLE_SHEET_WORKSHEET is not set"
+          exit 1
+        fi
+        
+        echo "All required configuration is present"
+        
+    - name: Run ETL pipeline
+      env:
+        FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        GOOGLE_SHEET_NAME: ${{ vars.GOOGLE_SHEET_NAME }}
+        GOOGLE_SHEET_WORKSHEET: ${{ vars.GOOGLE_SHEET_WORKSHEET }}
+      run: |
+        # Create credentials directory
+        mkdir -p credentials
+        
+        # Write Google OAuth2 credentials
+        echo "${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}" > credentials/client_secrets.json
+        echo "${{ secrets.GOOGLE_SHEETS_TOKEN }}" > credentials/token.json
+        
+        # Run the pipeline
+        python main.py
+        
+    - name: Notify on failure
+      if: failure()
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          try {
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'ETL Pipeline Failed',
+              body: 'The ETL pipeline failed. Please check the workflow run for details.',
+              labels: ['bug', 'etl']
+            });
+          } catch (error) {
+            console.error('Failed to create issue:', error);
+            // Don't fail the workflow if issue creation fails
+          }
