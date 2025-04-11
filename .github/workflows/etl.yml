@@ -28,10 +28,6 @@ jobs:
             echo "Error: FRED_API_KEY is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.ALTERNATIVE_API_KEY }}" ]; then
-            echo "Error: ALTERNATIVE_API_KEY is not set"
-            exit 1
-          fi
           if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
             echo "Error: SUPABASE_URL is not set"
             exit 1
