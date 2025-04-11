@@ -30,23 +30,30 @@ jobs:
         run: |
           # Check if all required secrets are present
           if [ -z "${{ secrets.FRED_API_KEY }}" ]; then
-            echo "Warning: FRED_API_KEY is not set"
+            echo "Error: FRED_API_KEY is not set"
+            exit 1
           fi
           if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
-            echo "Warning: SUPABASE_URL is not set"
+            echo "Error: SUPABASE_URL is not set"
+            exit 1
           fi
           if [ -z "${{ secrets.SUPABASE_KEY }}" ]; then
-            echo "Warning: SUPABASE_KEY is not set"
+            echo "Error: SUPABASE_KEY is not set"
+            exit 1
           fi
           if [ -z "${{ secrets.GOOGLE_SHEET_NAME }}" ]; then
-            echo "Warning: GOOGLE_SHEET_NAME is not set"
+            echo "Error: GOOGLE_SHEET_NAME is not set"
+            exit 1
           fi
           if [ -z "${{ secrets.GOOGLE_SHEET_WORKSHEET }}" ]; then
-            echo "Warning: GOOGLE_SHEET_WORKSHEET is not set"
+            echo "Error: GOOGLE_SHEET_WORKSHEET is not set"
+            exit 1
           fi
           if [ -z "${{ secrets.GOOGLE_CREDENTIALS }}" ]; then
-            echo "Warning: GOOGLE_CREDENTIALS is not set"
+            echo "Error: GOOGLE_CREDENTIALS is not set"
+            exit 1
           fi
+          echo "All required secrets are present"
           
       - name: Run ETL pipeline
         env:
@@ -62,6 +69,7 @@ jobs:
         if: failure()
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             try {
               await github.rest.issues.create({
