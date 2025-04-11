@@ -69,6 +69,7 @@ jobs:
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         GOOGLE_SHEET_NAME: ${{ vars.GOOGLE_SHEET_NAME }}
         GOOGLE_SHEET_WORKSHEET: ${{ vars.GOOGLE_SHEET_WORKSHEET }}
+        GOOGLE_SHEET_ID: ${{ vars.GOOGLE_SHEET_NAME }}  # Use the same value as GOOGLE_SHEET_NAME
       run: |
         # Create credentials directory
         mkdir -p credentials
