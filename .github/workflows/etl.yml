@@ -1,7 +1,7 @@
 name: ETL Pipeline
 on:
   schedule:
-    - cron: "0 18 * * *"  # Runs at 18:00 UTC (05:00 AEDT) daily
+    - cron: "0 20 * * *"  # Runs at 20:00 UTC (06:00 AEST) daily
   workflow_dispatch:
 
 jobs:
@@ -52,6 +52,22 @@ jobs:
             echo "Error: GOOGLE_CREDENTIALS is not set"
             exit 1
           fi
+          if [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+            echo "Error: OPENAI_API_KEY is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.TWITTER_EMAIL }}" ]; then
+            echo "Error: TWITTER_EMAIL is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.TWITTER_USERNAME }}" ]; then
+            echo "Error: TWITTER_USERNAME is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.TWITTER_PASSWORD }}" ]; then
+            echo "Error: TWITTER_PASSWORD is not set"
+            exit 1
+          fi
           echo "All required secrets are present"
       
       - name: Run ETL
@@ -70,6 +86,14 @@ jobs:
           
           # Google Service Account
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          
+          # OpenAI
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          
+          # Twitter credentials
+          TWITTER_EMAIL: ${{ secrets.TWITTER_EMAIL }}
+          TWITTER_USERNAME: ${{ secrets.TWITTER_USERNAME }}
+          TWITTER_PASSWORD: ${{ secrets.TWITTER_PASSWORD }}
         run: |
           # Create credentials.json from secret with proper JSON formatting
           echo "$GOOGLE_CREDENTIALS" | jq . > credentials.json
