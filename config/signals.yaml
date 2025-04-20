@@ -10,3 +10,96 @@ signals:
   crypto_fear_greed:
     extractor: alternative_extractor
     transformer: fear_greed_transformer
+  financial_tweets_openai:
+    extractor:
+      module: 'etl.extract.twitter_login_extractor'
+      class: 'TwitterLoginExtractor'
+      params:
+        username: '{{ TWITTER_USERNAME }}'
+        password: '{{ TWITTER_PASSWORD }}'
+        output_file: data/extracted/financial_tweets_login.json
+        handles:
+          - artemis
+          - ___Checkmatey
+          - matt_willemsen
+          - docXBT
+          - raoulGMI
+          - superstevefarms
+          - branbtc
+          - apompliano
+          - jamie1coutts
+          - breedlove22
+          - karpathy
+          - naval
+          - sama
+        tweets_per_user: 10
+        headless: false
+        storage_state_path: data/credentials/twitter_cookies.json
+        screenshots_dir: screenshots
+        take_screenshots: true
+    transformer:
+      module: 'etl.transform.openai_sentiment_transformer'
+      class: 'OpenAISentimentTransformer'
+      params:
+        input_file: data/extracted/financial_tweets_login.json
+        output_file: data/transformed/financial_tweets_openai_analysis.json
+        api_key: '{{ OPENAI_API_KEY }}'
+        model: gpt-4o
+        max_age_hours: 240
+        analyze_images: true
+        screenshots_dir: screenshots
+    loaders:
+      - module: 'etl.load.tweet_metrics_loader'
+        class: 'TweetMetricsLoader'
+        params:
+          url: '{{ SUPABASE_URL }}'
+          key: '{{ SUPABASE_KEY }}'
+          tweet_metrics_table: 'tweet_metrics'
+          signals_table: 'financial_signals'
+          signal_name: 'twitter_sentiment'
+  financial_tweets_vision:
+    extractor:
+      module: 'etl.extract.vision_twitter_extractor'
+      class: 'VisionTwitterExtractor'
+      params:
+        email: "${TWITTER_EMAIL}"
+        username: "${TWITTER_USERNAME}"
+        password: "${TWITTER_PASSWORD}"
+        output_file: data/extracted/financial_tweets_vision.json
+        handles:
+          - artemis
+          - ___Checkmatey
+          - matt_willemsen
+          - docXBT
+          - raoulGMI
+          - superstevefarms
+          - branbtc
+          - apompliano
+          - jamie1coutts
+          - breedlove22
+          - karpathy
+          - naval
+          - sama
+        max_tweets_per_handle: 10
+        headless: false
+        screenshots_dir: screenshots/vision
+        user_data_dir: data/browser_data/twitter_vision
+    transformer:
+      module: 'etl.transform.openai_sentiment_transformer'
+      class: 'OpenAISentimentTransformer'
+      params:
+        input_file: data/extracted/financial_tweets_vision.json
+        output_file: data/transformed/financial_tweets_vision_analysis.json
+        model: gpt-4o
+        max_age_hours: 240
+        analyze_images: true
+        screenshots_dir: screenshots/vision
+    loaders:
+      - module: 'etl.load.tweet_metrics_loader'
+        class: 'TweetMetricsLoader'
+        params:
+          url: '{{ SUPABASE_URL }}'
+          key: '{{ SUPABASE_KEY }}'
+          tweet_metrics_table: 'tweet_metrics'
+          signals_table: 'financial_signals'
+          signal_name: 'twitter_sentiment_vision'
