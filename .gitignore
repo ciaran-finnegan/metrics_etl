@@ -1,5 +1,13 @@
+# Added ignores for virtual env, macOS files, screenshots, and env
+.venv/
 .env
+.DS_Store
+screenshots/
+
 __pycache__/
 *.pyc
 *.log
 credentials.json
+*.json
+*.csv
+data/
