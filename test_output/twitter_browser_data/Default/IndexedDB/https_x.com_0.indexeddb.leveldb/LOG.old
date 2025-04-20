@@ -1,0 +1,3 @@
+2025/04/20-21:54:52.718 a503 Reusing MANIFEST /Users/Ciaran/Dev/metrics_etl/test_output/twitter_browser_data/Default/IndexedDB/https_x.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/04/20-21:54:52.718 a503 Recovering log #3
+2025/04/20-21:54:52.722 a503 Reusing old log /Users/Ciaran/Dev/metrics_etl/test_output/twitter_browser_data/Default/IndexedDB/https_x.com_0.indexeddb.leveldb/000003.log 

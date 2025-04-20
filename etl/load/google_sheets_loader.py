@@ -1,11 +1,24 @@
 import gspread
-import certifi
 import os
 import json
 from datetime import datetime
-from oauth2client.service_account import ServiceAccountCredentials
+from typing import Dict, Any
 from utils.exceptions import LoadError
 from utils.logging_config import logger
+
+# Placeholders if needed
+class Logger:
+    def info(self, msg): print(f"INFO: {msg}")
+    def error(self, msg): print(f"ERROR: {msg}")
+    def warning(self, msg): print(f"WARN: {msg}")
+logger = Logger()
+
+# Define expected headers globally or within the class
+EXPECTED_HEADERS = [
+    "timestamp", "date", "metric_name", "value", "value_usd",
+    "classification", "percentage", "ratio", "source",
+    "timeframe", "units", "is_bullish", "metadata"
+]
 
 class GoogleSheetsLoader:
     # View definitions for different metric categories
@@ -15,62 +28,73 @@ class GoogleSheetsLoader:
         'monetary_metrics': ['global_m2_money_supply', 'realised_cap_for_onchain_liquidity', 'futures_funding_rate']
     }
 
-    def __init__(self, creds_path: str, sheet_name: str = None, worksheet: str = None):
+    def __init__(self, config: Dict[str, Any]):
         """
+        Initializes the Google Sheets client using OAuth credentials.
         Args:
-            creds_path: Path to Google Service Account JSON file
-            sheet_name: Name of the Google Sheet (defaults to GOOGLE_SHEET_NAME env var)
-            worksheet: Worksheet/tab name (defaults to GOOGLE_SHEET_WORKSHEET env var)
+            config (Dict[str, Any]): Dictionary containing:
+                - creds_path (str): Path to credentials file (client_secrets.json).
+                - token_path (str): Path to authorized user token file (token.json).
+                - sheet_name (str): Name of the Google Sheet.
+                - worksheet (str, optional): Target worksheet name (defaults to "raw_data").
         """
         try:
-            os.environ['SSL_CERT_FILE'] = certifi.where()
-            scope = [
-                "https://spreadsheets.google.com/feeds",
-                "https://www.googleapis.com/auth/drive"
-            ]
-            creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
-            self.client = gspread.authorize(creds)
+            creds_path = config.get("creds_path")
+            token_path = config.get("token_path")
+            sheet_name = config.get("sheet_name")
+            sheet_id = os.getenv("GOOGLE_SHEET_ID")
+            self.worksheet_name = config.get("worksheet", "raw_data")
+
+            if not all([creds_path, token_path, sheet_id]):
+                raise ValueError("Missing required config: creds_path, token_path and GOOGLE_SHEET_ID environment variable")
+
+            # Check if token file exists, log warning if not (will fail auth)
+            if not os.path.exists(token_path):
+                 logger.warning(f"Google Sheets token file not found at '{token_path}'. Authentication will likely fail.")
             
-            # Get sheet name from env var if not provided
-            sheet_name = sheet_name or os.getenv("GOOGLE_SHEET_NAME")
-            if not sheet_name:
-                raise LoadError("Missing GOOGLE_SHEET_NAME environment variable")
+            # Use stored OAuth token
+            gc = gspread.oauth(
+                credentials_filename=creds_path,
+                authorized_user_filename=token_path
+            )
             
-            # Get worksheet name from env var if not provided
-            worksheet = worksheet or os.getenv("GOOGLE_SHEET_WORKSHEET", "raw_data")
-            
-            self.spreadsheet = self.client.open(sheet_name)
-            self.raw_sheet = self.spreadsheet.worksheet(worksheet)
-            
-            # Ensure headers exist
+            # Open by ID instead of name
+            self.spreadsheet = gc.open_by_key(sheet_id)
+            self.sheet = self.spreadsheet.worksheet(self.worksheet_name)
+
+            # Use sheet_name for logging if available, otherwise use ID
+            log_sheet_name = sheet_name if sheet_name else f"ID:{sheet_id}"
+            logger.info(f"Google Sheets connected to: {log_sheet_name}/{self.worksheet_name}")
+
+            # Ensure headers exist on the main sheet
             self._ensure_headers()
             
             # Setup view worksheets
-            self._setup_views()
-            
-            logger.info(f"Google Sheets connected to: {sheet_name}/{worksheet}")
+            # self._setup_views() # Keep commented out
+
+        except FileNotFoundError as fnf_error:
+            logger.error(f"Google Sheets credentials/token file not found: {fnf_error}")
+            raise LoadError(f"Google Sheets credentials error: {fnf_error}")
         except Exception as e:
-            logger.error(f"Google Sheets connection failed: {e}")
+            logger.error(f"Google Sheets connection/setup failed: {type(e).__name__} - {e}")
             raise LoadError(f"Google Sheets init error: {e}")
     
     def _ensure_headers(self):
-        """Ensure worksheet has the correct headers"""
-        expected_headers = [
-            "timestamp", "date", "metric_name", "value", "value_usd",
-            "classification", "percentage", "ratio", "source",
-            "timeframe", "units", "is_bullish", "metadata"
-        ]
-        
+        """Ensure target worksheet has the correct headers."""
         try:
-            current_headers = self.raw_sheet.row_values(1)
-            if not current_headers or current_headers != expected_headers:
-                # Clear existing data and set new headers
-                self.raw_sheet.clear()
-                self.raw_sheet.append_row(expected_headers)
-                logger.info("Headers updated successfully")
+            current_headers = self.sheet.row_values(1)
+            # Check if headers match, ignoring potential empty strings from sheet
+            if not current_headers or [h for h in current_headers if h] != EXPECTED_HEADERS:
+                logger.warning(f"Headers mismatch or missing in '{self.worksheet_name}'. Expected: {EXPECTED_HEADERS}, Found: {current_headers}. Attempting to set headers.")
+                # Be cautious clearing sheets; maybe only append if empty?
+                if not current_headers or all(h == '' for h in current_headers): 
+                    self.sheet.update('A1', [EXPECTED_HEADERS]) # Update header row
+                    logger.info(f"Headers set for '{self.worksheet_name}'")
+                else:
+                     logger.warning(f"Sheet '{self.worksheet_name}' has existing headers, not clearing. Manual check recommended.")
         except Exception as e:
-            logger.error(f"Failed to ensure headers: {e}")
-            raise LoadError(f"Header setup failed: {e}")
+            logger.error(f"Failed to ensure headers in '{self.worksheet_name}': {e}")
+            # Don't necessarily raise LoadError here, maybe just log warning
 
     def _setup_views(self):
         """Setup or update view worksheets"""
@@ -142,37 +166,40 @@ class GoogleSheetsLoader:
             logger.error(f"Failed to update views: {e}")
 
     def load(self, data: dict) -> bool:
-        """Append data as a new row"""
+        """Append data as a new row, matching the expected header order."""
         try:
-            # Prepare row data for raw sheet
-            row = [
-                datetime.now().isoformat(),  # timestamp
-                data.get("date", datetime.now().date().isoformat()),  # date
-                data["signal_name"],  # metric_name
-                data["value"],  # value
-                data["value"] if data.get("units") == "USD" else "",  # value_usd
-                data.get("classification", ""),  # classification
-                data.get("percentage", ""),  # percentage
-                data.get("ratio", ""),  # ratio
-                data.get("source", ""),  # source
-                data.get("timeframe", ""),  # timeframe
-                data.get("units", ""),  # units
-                data.get("is_bullish", ""),  # is_bullish
-                json.dumps({k: v for k, v in data.items() if k not in [
-                    "signal_name", "date", "value", "classification", 
-                    "percentage", "ratio", "source", "timeframe", 
-                    "units", "is_bullish"
-                ]})  # metadata
-            ]
-            
-            # Add to raw data sheet
-            self.raw_sheet.append_row(row)
-            
-            # Update view worksheets
-            self._update_views(data)
-            
+            if not data or not data.get("signal_name"):
+                raise LoadError("Invalid or empty data received by GoogleSheetsLoader")
+
+            # Prepare row data according to EXPECTED_HEADERS
+            row_to_append = []
+            for header in EXPECTED_HEADERS:
+                value = data.get(header) # Get value for header
+                # Special handling for metadata
+                if header == "metadata":
+                    # Extract metadata dict if present, otherwise create one from remaining keys
+                    metadata_dict = data.get("metadata", {})
+                    if not isinstance(metadata_dict, dict):
+                         metadata_dict = {} # Ensure it's a dict
+                    # Add any other top-level keys not in headers to metadata
+                    for k, v in data.items():
+                        if k not in EXPECTED_HEADERS and k != "metadata":
+                             metadata_dict[k] = v
+                    # Convert metadata dict to JSON string for sheet
+                    value = json.dumps(metadata_dict) if metadata_dict else "{}"
+                elif isinstance(value, datetime):
+                     value = value.isoformat() # Ensure datetimes are strings
+                
+                # Append value (or empty string if None/missing)
+                row_to_append.append(str(value) if value is not None else "") 
+
+            self.sheet.append_row(row_to_append)
+            logger.info(f"Data for '{data['signal_name']}' loaded to Google Sheet: {self.worksheet_name}")
+
+            # Update view worksheets (optional)
+            # self._update_views(data)
+
             return True
-        
         except Exception as e:
-            logger.error(f"Google Sheets append failed: {e}")
+            logger.error(f"Failed to load data to Google Sheets ({self.worksheet_name}): {e}")
             raise LoadError(f"Google Sheets load error: {e}")

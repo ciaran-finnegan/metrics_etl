@@ -1,0 +1,142 @@
+signals:
+  twitter_sentiment:
+    extractor: 
+      module: etl.extract.twitter_extractor
+      class: TwitterExtractor
+      params:
+        handles:
+          - artemis
+          - matt_willemsen
+          - docXBT
+          - raoulGMI
+          - superstevefarms
+          - branbtc
+          - apompliano
+          - jamie1coutts
+          - breedlove22
+          - karpathy
+          - naval
+          - sama
+        days_lookback: 7
+        tweets_per_user: 20
+        include_replies: false
+        include_retweets: false
+    transformer: 
+      module: etl.transform.twitter_sentiment_transformer
+      class: TwitterSentimentTransformer
+      params:
+        crypto_keywords:
+          - bitcoin
+          - btc
+          - ethereum
+          - eth
+          - crypto
+          - blockchain
+          - defi
+          - nft
+          - altcoin
+          - token
+          - web3
+          - mining
+        macro_keywords:
+          - inflation
+          - fed
+          - interest rate
+          - economy
+          - gdp
+          - recession
+          - market
+          - stock
+          - bond
+          - dollar
+          - treasury
+          - debt
+          - currency
+    loaders:
+      - type: supabase_loader
+        config:
+          table: financial_signals
+
+  twitter_topics:
+    extractor: 
+      module: etl.extract.twitter_extractor
+      class: TwitterExtractor
+      params:
+        handles:
+          - artemis
+          - matt_willemsen
+          - docXBT
+          - raoulGMI
+          - superstevefarms
+          - branbtc
+          - apompliano
+          - jamie1coutts
+          - breedlove22
+          - karpathy
+          - naval
+          - sama
+        days_lookback: 7
+        tweets_per_user: 20
+        include_replies: false
+        include_retweets: false
+    transformer: 
+      module: etl.transform.twitter_topics_transformer
+      class: TwitterTopicsTransformer
+    loaders:
+      - type: supabase_loader
+        config:
+          table: financial_signals
+
+  twitter_authority:
+    extractor: 
+      module: etl.extract.twitter_extractor
+      class: TwitterExtractor
+      params:
+        handles:
+          - artemis
+          - matt_willemsen
+          - docXBT
+          - raoulGMI
+          - superstevefarms
+          - branbtc
+          - apompliano
+          - jamie1coutts
+          - breedlove22
+          - karpathy
+          - naval
+          - sama
+        days_lookback: 14  # Look back further for authority analysis
+        tweets_per_user: 30  # Gather more tweets for better analysis
+        include_replies: true  # Include replies in authority analysis
+        include_retweets: false
+    transformer: 
+      module: etl.transform.twitter_authority_transformer
+      class: TwitterAuthorityTransformer
+      params:
+        follower_weight: 0.4
+        engagement_weight: 0.3
+        content_weight: 0.3
+        authority_keywords:
+          - predict
+          - forecast
+          - expect
+          - outlook
+          - analysis
+          - thesis
+          - conviction
+          - opportunity
+          - risk
+          - asymmetric
+          - allocation
+          - bull
+          - bear
+          - position
+          - accumulate
+          - sell
+          - buy
+          - long
+          - short
+    loaders:
+      - type: supabase_loader
+        config:
+          table: financial_signals 

@@ -254,11 +254,15 @@ If the tweet doesn't contain financial/investment content, assign "neutral" sent
         if tweet_id and username:
             image_path = self._find_screenshot(tweet_id, username)
             
-        # If no local screenshot but tweet has image URL, try to download it
-        if not image_path and 'image_url' in tweet:
-            image_url = tweet.get('image_url')
-            if image_url:
-                image_path = self._download_image(image_url)
+        # If no local screenshot, check for image_urls list in tweet and download first
+        if not image_path and tweet.get('image_urls'):
+            for img_url in tweet.get('image_urls') or []:
+                try:
+                    image_path = self._download_image(img_url)
+                    if image_path:
+                        break
+                except Exception:
+                    continue
                 
         # Attach image to message if found
         if image_path:
@@ -335,11 +339,20 @@ If the tweet doesn't contain financial/investment content, assign "neutral" sent
                 
             message_content = result["choices"][0]["message"]["content"]
             
+            # Guard against non-string content
+            if not isinstance(message_content, str) or message_content is None:
+                logger.warning(f"OpenAI response content is null or invalid: {message_content}")
+                return {
+                    "sentiment": "neutral",
+                    "sentiment_score": 50,
+                    "confidence": 0,
+                    "summary": "Empty or invalid content from response"
+                }
             try:
                 # Parse JSON response
                 parsed_data = json.loads(message_content)
                 return parsed_data
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, TypeError):
                 logger.warning(f"Failed to parse JSON from OpenAI response: {message_content}")
                 # Return a basic structure if parsing fails
                 return {
