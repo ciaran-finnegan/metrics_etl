@@ -28,28 +28,12 @@ jobs:
             echo "Error: FRED_API_KEY is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.ALTERNATIVE_API_KEY }}" ]; then
-            echo "Error: ALTERNATIVE_API_KEY is not set"
-            exit 1
-          fi
           if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
             echo "Error: SUPABASE_URL is not set"
             exit 1
           fi
           if [ -z "${{ secrets.SUPABASE_KEY }}" ]; then
             echo "Error: SUPABASE_KEY is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.GOOGLE_SHEET_NAME }}" ]; then
-            echo "Error: GOOGLE_SHEET_NAME is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.GOOGLE_SHEET_WORKSHEET }}" ]; then
-            echo "Error: GOOGLE_SHEET_WORKSHEET is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.GOOGLE_CREDENTIALS }}" ]; then
-            echo "Error: GOOGLE_CREDENTIALS is not set"
             exit 1
           fi
           if [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then
