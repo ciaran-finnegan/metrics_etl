@@ -19,10 +19,13 @@ jobs:
           mkdir -p "$RUNNER_TOOL_CACHE" "$RUNNER_TEMP" "$HOME"
       - uses: actions/checkout@v4
       
-      - name: Install dependencies
+      - name: Set up Python virtual environment & install deps
         run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -r requirements.txt
+          python3 -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          echo "VENV_ACTIVATE=source $(pwd)/venv/bin/activate" >> $GITHUB_ENV
       
       - name: Install Playwright Browsers
         run: |
@@ -87,6 +90,7 @@ jobs:
           TWITTER_USERNAME: ${{ secrets.TWITTER_USERNAME }}
           TWITTER_PASSWORD: ${{ secrets.TWITTER_PASSWORD }}
         run: |
+          $VENV_ACTIVATE
           # Create credentials.json from secret with proper JSON formatting
           echo "$GOOGLE_CREDENTIALS" | jq . > credentials.json
           
@@ -96,7 +100,7 @@ jobs:
             exit 1
           fi
           
-          # Run the ETL pipeline
+          # Run the ETL pipeline inside venv
           python main.py
           
       - name: Notify on Failure
