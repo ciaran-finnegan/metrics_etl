@@ -27,7 +27,10 @@ jobs:
           if ! command -v cargo >/dev/null; then
             curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path
             echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+            source "$HOME/.cargo/env"
           fi
+          # Ensure x86_64 target is present for cross‑compilation needed by some wheels
+          rustup target add x86_64-apple-darwin || true
       
       - name: Set up Python virtual environment & install deps
         run: |
