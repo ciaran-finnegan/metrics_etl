@@ -34,7 +34,7 @@ class VisionTwitterExtractor:
         self.username = self.params.get('username', '')
         self.password = self.params.get('password', '')
         self.verification_code = self.params.get('verification_code', '')
-        self.email = self.params.get('email', '') or os.environ.get('TWITTER_EMAIL', '')
+        self.email = self.params.get('email', '')
         self.handles = self.params.get('handles', [])
         self.max_tweets_per_handle = self.params.get('max_tweets_per_handle', 10)
         self.output_file = self.params.get('output_file', 'twitter_extraction_results.json')
@@ -608,53 +608,55 @@ Return a JSON response with the following structure:
                 is_email = guidance.get("is_email", False)
                 is_password = guidance.get("is_password", False)
                 
-                # Simple random delay for human-like behavior
-                wait_time = random.uniform(0.5, 2.0)
+                # Determine which credential to use based on OpenAI analysis
+                cred = None
+                cred_type = "unknown"
+                if guidance.get("is_username"):
+                    cred = self.username
+                    cred_type = "username"
+                if guidance.get("is_email"):
+                    cred = self.email
+                    cred_type = "email"
+                if guidance.get("is_password"):
+                    cred = self.password
+                    cred_type = "password"
+                if guidance.get("is_verification"):
+                    cred = self.verification_code
+                    cred_type = "verification code"
                 
-                # Select the appropriate credential based on field type
-                if is_password:
-                    credential = self.password
-                    self.logger.info("Using stored password")
-                elif is_email and self.email:
-                    credential = self.email
-                    self.logger.info("Using stored email")
-                elif is_username:
-                    credential = self.username
-                    self.logger.info("Using stored username")
-                else:
-                    self.logger.warning("Field type not recognized, skipping")
-                    return False
-                
-                # Check if we have a selector
+                if cred is None:
+                    self.logger.warning("Could not determine credential type from OpenAI guidance.")
+                    return False # Cannot proceed without knowing what to type
+
+                self.logger.info(f"Using stored {cred_type}")
+
+                # Use the selector suggested by OpenAI
+                selector = guidance.get("selector")
                 if not selector:
-                    self.logger.warning("No selector provided by OpenAI, cannot enter text")
-                    return False
+                    self.logger.warning("No selector provided by OpenAI, attempting default selector.")
+                    # Fallback logic (e.g., try a common input name)
+                    selector = "input[name='text']" if guidance.get("is_email") or guidance.get("is_username") else "input[name='password']"
                 
-                # Try to enter text with the provided selector
-                try:
-                    self.logger.info(f"Using selector: {selector} to enter credential")
-                    element = await self.page.query_selector(selector)
-                    if element:
-                        # Clear field
-                        await self.page.fill(selector, "")
-                        await asyncio.sleep(random.uniform(0.1, 0.3))
+                self.logger.info(f"Using selector: {selector} to enter credential")
+                
+                # Log the first few characters before typing
+                masked_cred = cred[:4] + "****" if cred else "[EMPTY]"
+                self.logger.info(f"Attempting to type: '{masked_cred}' into selector: {selector}")
 
-                        # Type credential with realistic human-like behavior
-                        await self._type_like_human(selector, credential)
-                        self.logger.info("Typed credential with human-like behavior")
-
-                        # Natural pause before pressing Enter
-                        await asyncio.sleep(random.uniform(0.3, 0.8))
-                        await self.page.keyboard.press("Enter")
-
-                        self.logger.info("Form submitted by pressing Enter")
-                        return True
+                await self._type_like_human(selector, cred)
+                
+                # Check if OpenAI suggests clicking a button next or just submitting
+                if guidance.get("next_action") == "click_button":
+                    button_selector = guidance.get("button_selector")
+                    if button_selector:
+                        self.logger.info(f"Clicking button with selector: {button_selector}")
+                        await self.page.click(button_selector)
                     else:
-                        self.logger.warning(f"Element not found: {selector}")
-                        return False
-                except Exception as e:
-                    self.logger.warning(f"Error entering text: {e}")
-                    return False
+                        self.logger.warning("OpenAI suggested clicking button, but no selector provided. Submitting form instead.")
+                        await self.page.press(selector, "Enter")
+                else:
+                    self.logger.info("Form submitted by pressing Enter")
+                    await self.page.press(selector, "Enter")
                 
             elif action == "click_element":
                 selector = guidance.get("selector", "")
