@@ -88,7 +88,7 @@ jobs:
           fi
           echo "All required secrets are present"
       
-      - name: Install signed Chromium via Homebrew (macOS)
+      - name: Install Google Chrome via Homebrew (macOS)
         if: runner.os == 'macOS'
         run: |
           set -eo pipefail
@@ -107,46 +107,46 @@ jobs:
           sudo chown -R "$(whoami)" /usr/local/Cellar 2>/dev/null || true
           sudo chown -R "$(whoami)" /usr/local/var/homebrew 2>/dev/null || true
 
-          # Install or upgrade Chromium
-          if brew list --cask chromium >/dev/null 2>&1; then
-            echo "Chromium already installed – upgrading to make sure it is fresh"
-            brew upgrade --cask chromium || true
+          # Install or upgrade Google Chrome
+          if brew list --cask google-chrome >/dev/null 2>&1; then
+            echo "Google Chrome already installed – upgrading to make sure it is fresh"
+            brew upgrade --cask google-chrome || true
           else
-            brew install --cask --no-quarantine chromium
+            brew install --cask --no-quarantine google-chrome
           fi
 
           # Resolve the actual executable path.  Homebrew sometimes moves the
           # .app into /Applications and only leaves a wrapper script in
           # /usr/local/bin.  Try several strategies until one works.
 
-          # 1) traditional Caskroom location
-          CHROMIUM_BIN=$(ls -d "$BREW_PREFIX"/Caskroom/chromium/*/Chromium.app/Contents/MacOS/Chromium 2>/dev/null | head -n 1 || true)
+          # 1) traditional Caskroom location (Google Chrome)
+          CHROME_BIN=$(ls -d "$BREW_PREFIX"/Caskroom/google-chrome/*/Google\ Chrome.app/Contents/MacOS/Google\ Chrome 2>/dev/null | head -n 1 || true)
 
           # 2) moved to /Applications by brew
-          if [ -z "$CHROMIUM_BIN" ]; then
-            if [ -x "/Applications/Chromium.app/Contents/MacOS/Chromium" ]; then
-              CHROMIUM_BIN="/Applications/Chromium.app/Contents/MacOS/Chromium"
+          if [ -z "$CHROME_BIN" ]; then
+            if [ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
+              CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
             fi
           fi
 
           # 3) follow the wrapper script installed by brew
-          if [ -z "$CHROMIUM_BIN" ]; then
-            WRAPPER=$(command -v chromium || true)
+          if [ -z "$CHROME_BIN" ]; then
+            WRAPPER=$(command -v google-chrome || true)
             if [ -n "$WRAPPER" ]; then
-              CHROMIUM_BIN=$(readlink "$WRAPPER" || echo "$WRAPPER")
+              CHROME_BIN=$(readlink "$WRAPPER" || echo "$WRAPPER")
             fi
           fi
 
-          if [ -z "$CHROMIUM_BIN" ] || [ ! -x "$CHROMIUM_BIN" ]; then
-            echo "Could not locate Chromium executable after installation" >&2
+          if [ -z "$CHROME_BIN" ] || [ ! -x "$CHROME_BIN" ]; then
+            echo "Could not locate Google Chrome executable after installation" >&2
             exit 1
           fi
 
-          echo "Using Chromium executable at: $CHROMIUM_BIN"
+          echo "Using Google Chrome executable at: $CHROME_BIN"
 
           # Export for subsequent steps and for any child shells
-          echo "PLAYWRIGHT_CHROME_PATH=$CHROMIUM_BIN" >> $GITHUB_ENV
-          export PLAYWRIGHT_CHROME_PATH="$CHROMIUM_BIN"
+          echo "PLAYWRIGHT_CHROME_PATH=$CHROME_BIN" >> $GITHUB_ENV
+          export PLAYWRIGHT_CHROME_PATH="$CHROME_BIN"
       
       - name: Run ETL
         env:
