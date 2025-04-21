@@ -107,9 +107,12 @@ jobs:
           sudo chown -R "$(whoami)" /usr/local/Cellar 2>/dev/null || true
           sudo chown -R "$(whoami)" /usr/local/var/homebrew 2>/dev/null || true
 
-          # Install or upgrade Google Chrome
-          if brew list --cask google-chrome >/dev/null 2>&1; then
-            echo "Google Chrome already installed – upgrading to make sure it is fresh"
+          # Install or upgrade Google Chrome.  If the app bundle is already in
+          # /Applications but brew does not know about it, skip installation.
+          if [ -d "/Applications/Google Chrome.app" ]; then
+            echo "Google Chrome.app already present in /Applications – skipping brew install"
+          elif brew list --cask google-chrome >/dev/null 2>&1; then
+            echo "Google Chrome already installed via Homebrew – upgrading to make sure it is fresh"
             brew upgrade --cask google-chrome || true
           else
             brew install --cask --no-quarantine google-chrome
