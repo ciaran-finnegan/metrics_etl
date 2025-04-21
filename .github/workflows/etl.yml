@@ -9,18 +9,18 @@ jobs:
     environment: production
     runs-on: [self-hosted, macOS, ARM64]
     env:
+      HOME: ${{ github.workspace }}
       RUNNER_TOOL_CACHE: ${{ github.workspace }}/_tool
       RUNNER_TEMP: ${{ github.workspace }}/_temp
       AGENT_TOOLSDIRECTORY: ${{ github.workspace }}/_tool
     steps:
       - name: Prepare runner directories
         run: |
-          mkdir -p "$RUNNER_TOOL_CACHE"
-          mkdir -p "$RUNNER_TEMP"
+          mkdir -p "$RUNNER_TOOL_CACHE" "$RUNNER_TEMP" "$HOME"
       - uses: actions/checkout@v4
       
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
         env:
