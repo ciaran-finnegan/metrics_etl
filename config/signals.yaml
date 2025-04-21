@@ -12,9 +12,10 @@ signals:
     transformer: fear_greed_transformer
   financial_tweets_openai:
     extractor:
-      module: 'etl.extract.twitter_login_extractor'
-      class: 'TwitterLoginExtractor'
+      module: 'etl.extract.vision_twitter_extractor'
+      class: 'VisionTwitterExtractor'
       params:
+        email: '{{ TWITTER_EMAIL }}'
         username: '{{ TWITTER_USERNAME }}'
         password: '{{ TWITTER_PASSWORD }}'
         output_file: data/extracted/financial_tweets_login.json
@@ -32,11 +33,9 @@ signals:
           - karpathy
           - naval
           - sama
-        tweets_per_user: 10
-        headless: false
-        storage_state_path: data/credentials/twitter_cookies.json
+        max_tweets_per_handle: 10
+        headless: true
         screenshots_dir: screenshots
-        take_screenshots: true
     transformer:
       module: 'etl.transform.openai_sentiment_transformer'
       class: 'OpenAISentimentTransformer'
@@ -62,9 +61,9 @@ signals:
       module: 'etl.extract.vision_twitter_extractor'
       class: 'VisionTwitterExtractor'
       params:
-        email: "${TWITTER_EMAIL}"
-        username: "${TWITTER_USERNAME}"
-        password: "${TWITTER_PASSWORD}"
+        email: '{{ TWITTER_EMAIL }}'
+        username: '{{ TWITTER_USERNAME }}'
+        password: '{{ TWITTER_PASSWORD }}'
         output_file: data/extracted/financial_tweets_vision.json
         handles:
           - artemis
@@ -81,7 +80,7 @@ signals:
           - naval
           - sama
         max_tweets_per_handle: 10
-        headless: false
+        headless: true
         screenshots_dir: screenshots/vision
         user_data_dir: data/browser_data/twitter_vision
     transformer:
