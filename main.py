@@ -14,6 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description="Financial Metrics ETL Pipeline")
     parser.add_argument("--config", default="config/signals.yaml", help="Path to signals configuration file")
     parser.add_argument("--signal", help="Run a specific signal only")
+    parser.add_argument("--headed", action="store_true", help="Run Playwright browser in headed mode (disable headless)")
     args = parser.parse_args()
     
     # Log environment info
@@ -25,6 +26,15 @@ def main():
     try:
         # Initialize and run the ETL engine
         engine = ETLEngine(args.config)
+        
+        # Override headless setting for VisionTwitterExtractor when '--headed' is provided
+        if args.headed:
+            for sig_name, sig_conf in engine.config.get("signals", {}).items():
+                extractor_def = sig_conf.get("extractor")
+                if isinstance(extractor_def, dict):
+                    params = extractor_def.get("params", {})
+                    params["headless"] = False
+                    extractor_def["params"] = params
         
         if args.signal:
             # Run a single signal if specified

@@ -39,51 +39,73 @@ class SupabaseLoader:
                 raise LoadError("Empty data received by SupabaseLoader")
 
             signal_name = data.get("signal_name")
-            value = data.get("value") # Allow value to be None or 0
+            value = float(data["value"])
 
             if not signal_name:
                 raise LoadError(f"Missing required field 'signal_name' in data: {data}")
-            if value is None:
-                 logger.warning(f"Value is None for signal '{signal_name}'. Inserting record with null value.")
 
             record = {
                 "date": data.get("date", datetime.now().date().isoformat()),
                 "signal_name": signal_name,
                 "value": value,
-                "units": data.get("units"), # Get units, could be None
-                "metadata": {
-                    k: v for k, v in data.get("metadata", {}).items() # Use metadata sub-dict if present
-                }
+                "units": data.get("units", ""),
+                "day_change": data.get("day_change", 0.0)
             }
             
-            # Add any top-level fields not in core list or 'metadata' key to metadata dict
-            core_fields = ["date", "signal_name", "value", "units", "metadata"]
-            for k, v in data.items():
-                if k not in core_fields:
-                    record["metadata"][k] = v
+            logger.debug(f"Date value before loading: {record['date']} (type: {type(record['date'])})")
+            logger.debug(f"Full record before loading: {record}")
             
-            # Ensure metadata is not empty before logging/inserting an empty object {}?
-            # Or let Supabase handle potential empty JSON objects if needed.
-            
-            logger.info(f"Attempting to insert record into Supabase table '{self.table}': {record}")
-
+            # Insert the record
             result = self.client.table(self.table).insert(record).execute()
 
             # Check Supabase response
             if hasattr(result, 'error') and result.error:
+                # Log the raw error for debugging
                 logger.error(f"Supabase insert error response: {result.error}")
-                raise LoadError(f"Supabase insert error: {result.error.message}")
+                
+                # Specific handling for duplicate key violation (code 23505)
+                # Note: Insert *should* prevent this, but handle defensively
+                if hasattr(result.error, 'code') and result.error.code == '23505':
+                    logger.warning(
+                        f"Duplicate key violation (23505) encountered during insert for signal '{signal_name}' "
+                        f"on date '{record.get('date')}'. This is unexpected for insert. Data might exist. Continuing."
+                    )
+                    # Treat as non-fatal, return True as insert implies intent to have the record exist
+                    return True
+                else:
+                    # Raise LoadError for other Supabase errors during insert
+                    raise LoadError(f"Supabase insert error: {result.error.message}")
+            
+            # Check if data was returned (indicates insert/update occurred)
+            # Note: Supabase client behavior might vary; an insert might return no data 
+            # if the record already existed and matched exactly.
             if not result.data:
-                # Sometimes insert might succeed but return empty data, treat as warning? Or error?
-                logger.warning(f"No data returned from Supabase insert, but no explicit error. Response: {result}")
-                # raise etl.custom_exceptions.LoadError(f"No data returned from Supabase insert. Response: {result}")
+                 logger.warning(f"No data returned from Supabase insert for signal '{signal_name}', but no explicit error. Assuming record already existed or no change was needed. Response: {result}")
+                 # Treat as success because the record state aligns with the insert goal
+                 return True 
 
-            logger.info(f"Successfully inserted data into Supabase for {record['signal_name']}: {result.data}")
+            logger.info(f"Successfully inserted/updated data in Supabase for {record['signal_name']}: {result.data}")
             return True
 
         except LoadError: # Re-raise known LoadErrors
              raise
         except Exception as e:
-            logger.error(f"Supabase load failed unexpectedly: {type(e).__name__} - {str(e)}")
-            logger.error(f"Failed data: {data}")
-            raise LoadError(f"Supabase load error: {type(e).__name__} - {str(e)}")
+            # Catching generic exception - check if it's a Supabase APIError related to duplicate key
+            error_str = str(e)
+            error_type = type(e).__name__
+            
+            # Check if it's likely the duplicate key error from the database directly
+            # The Supabase client might wrap this differently sometimes.
+            if "23505" in error_str and "duplicate key value violates unique constraint" in error_str:
+                 logger.warning(
+                     f"Caught duplicate key violation (23505) during Supabase load for signal '{data.get('signal_name')}'. "
+                     f"This suggests an issue potentially bypassing the insert logic or a race condition. Assuming record exists."
+                 )
+                 logger.debug(f"Original exception details: {error_type} - {error_str}")
+                 logger.debug(f"Data attempted: {data}")
+                 return True # Treat as success, as the record likely exists
+            else:
+                # Log and raise for other unexpected errors
+                logger.error(f"Supabase load failed unexpectedly: {error_type} - {error_str}")
+                logger.error(f"Failed data: {data}")
+                raise LoadError(f"Supabase load error: {error_type} - {error_str}")
