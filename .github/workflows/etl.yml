@@ -88,6 +88,23 @@ jobs:
           fi
           echo "All required secrets are present"
       
+      - name: Install system Chromium (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # Install via Homebrew if not already present
+          if ! command -v chromium >/dev/null; then
+            brew install --cask chromium
+          fi
+
+          # Resolve the actual executable path regardless of version
+          CHROMIUM_BIN=$(ls -d "$(brew --prefix)/Caskroom/chromium"/*/Chromium.app/Contents/MacOS/Chromium | head -n 1)
+          echo "Using Chromium executable at: $CHROMIUM_BIN"
+
+          # Make it available to subsequent steps / extractor code
+          echo "PLAYWRIGHT_CHROME_PATH=$CHROMIUM_BIN" >> $GITHUB_ENV
+          # Also export for the remainder of this step just in case
+          export PLAYWRIGHT_CHROME_PATH="$CHROMIUM_BIN"
+      
       - name: Run ETL
         env:
           # API Keys
