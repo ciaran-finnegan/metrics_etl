@@ -88,21 +88,45 @@ jobs:
           fi
           echo "All required secrets are present"
       
-      - name: Install system Chromium (macOS)
+      - name: Install signed Chromium via Homebrew (macOS)
         if: runner.os == 'macOS'
         run: |
-          # Install via Homebrew if not already present
-          if ! command -v chromium >/dev/null; then
-            brew install --cask chromium
+          set -eo pipefail
+          # Ensure the runner user can write to Homebrew directories (some
+          # self‑hosted runners install Homebrew as root which blocks `brew`)
+          BREW_PREFIX="$(brew --prefix 2>/dev/null || true)"
+          if [ -z "$BREW_PREFIX" ]; then
+            echo "Homebrew not found; installing is out of scope for this workflow"
+            exit 1
           fi
 
-          # Resolve the actual executable path regardless of version
-          CHROMIUM_BIN=$(ls -d "$(brew --prefix)/Caskroom/chromium"/*/Chromium.app/Contents/MacOS/Chromium | head -n 1)
+          echo "Homebrew prefix is $BREW_PREFIX"
+
+          # Fix common permission issues so `brew install` does not fail
+          sudo chown -R "$(whoami)" "$BREW_PREFIX" 2>/dev/null || true
+          sudo chown -R "$(whoami)" /usr/local/Cellar 2>/dev/null || true
+          sudo chown -R "$(whoami)" /usr/local/var/homebrew 2>/dev/null || true
+
+          # Install or upgrade Chromium
+          if brew list --cask chromium >/dev/null 2>&1; then
+            echo "Chromium already installed – upgrading to make sure it is fresh"
+            brew upgrade --cask chromium || true
+          else
+            brew install --cask --no-quarantine chromium
+          fi
+
+          # Resolve the actual executable path regardless of version / CPU arch
+          CHROMIUM_BIN=$(ls -d "$BREW_PREFIX"/Caskroom/chromium/*/Chromium.app/Contents/MacOS/Chromium | head -n 1)
+
+          if [ ! -x "$CHROMIUM_BIN" ]; then
+            echo "Could not locate Chromium executable under $BREW_PREFIX/Caskroom/chromium" >&2
+            exit 1
+          fi
+
           echo "Using Chromium executable at: $CHROMIUM_BIN"
 
-          # Make it available to subsequent steps / extractor code
+          # Export for subsequent steps and for any child shells
           echo "PLAYWRIGHT_CHROME_PATH=$CHROMIUM_BIN" >> $GITHUB_ENV
-          # Also export for the remainder of this step just in case
           export PLAYWRIGHT_CHROME_PATH="$CHROMIUM_BIN"
       
       - name: Run ETL
