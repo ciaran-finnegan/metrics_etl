@@ -55,36 +55,21 @@ class SupabaseLoader:
             logger.debug(f"Date value before loading: {record['date']} (type: {type(record['date'])})")
             logger.debug(f"Full record before loading: {record}")
             
-            # Insert the record
-            result = self.client.table(self.table).insert(record).execute()
+            # Use upsert instead of insert to handle duplicates gracefully
+            result = self.client.table(self.table).upsert(record, on_conflict="date,signal_name").execute()
 
             # Check Supabase response
             if hasattr(result, 'error') and result.error:
                 # Log the raw error for debugging
-                logger.error(f"Supabase insert error response: {result.error}")
-                
-                # Specific handling for duplicate key violation (code 23505)
-                # Note: Insert *should* prevent this, but handle defensively
-                if hasattr(result.error, 'code') and result.error.code == '23505':
-                    logger.warning(
-                        f"Duplicate key violation (23505) encountered during insert for signal '{signal_name}' "
-                        f"on date '{record.get('date')}'. This is unexpected for insert. Data might exist. Continuing."
-                    )
-                    # Treat as non-fatal, return True as insert implies intent to have the record exist
-                    return True
-                else:
-                    # Raise LoadError for other Supabase errors during insert
-                    raise LoadError(f"Supabase insert error: {result.error.message}")
+                logger.error(f"Supabase upsert error response: {result.error}")
+                raise LoadError(f"Supabase upsert error: {result.error.message}")
             
             # Check if data was returned (indicates insert/update occurred)
-            # Note: Supabase client behavior might vary; an insert might return no data 
-            # if the record already existed and matched exactly.
             if not result.data:
-                 logger.warning(f"No data returned from Supabase insert for signal '{signal_name}', but no explicit error. Assuming record already existed or no change was needed. Response: {result}")
-                 # Treat as success because the record state aligns with the insert goal
-                 return True 
+                 logger.warning(f"No data returned from Supabase upsert for signal '{signal_name}', but no explicit error. Assuming record already existed or no change was needed. Response: {result}")
+                 return True
 
-            logger.info(f"Successfully inserted/updated data in Supabase for {record['signal_name']}: {result.data}")
+            logger.info(f"Successfully upserted data in Supabase for {record['signal_name']}: {result.data}")
             return True
 
         except LoadError: # Re-raise known LoadErrors
