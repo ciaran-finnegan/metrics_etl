@@ -6,7 +6,7 @@ setup(
     packages=find_packages(include=['metrics_etl', 'metrics_etl.*']),
     package_dir={'': '.'},
     install_requires=[
-        "requests==2.31.0",
+        "requests==2.32.2",
         "python-dotenv==1.0.0",
         "gspread==5.11.0",
         "oauth2client==4.1.3",
