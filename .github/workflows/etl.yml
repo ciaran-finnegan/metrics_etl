@@ -21,6 +21,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
+      - name: Install Playwright Browsers
+        run: |
+          # Ensure Playwright Chromium is installed for VisionTwitterExtractor
+          playwright install chromium
+      
       - name: Validate Secrets
         run: |
           # Check if all required secrets are present
