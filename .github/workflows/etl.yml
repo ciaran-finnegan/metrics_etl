@@ -4,6 +4,9 @@ on:
     - cron: "0 20 * * *"  # Runs at 20:00 UTC (06:00 AEST) daily
   workflow_dispatch:
 
+permissions:
+  issues: write
+
 jobs:
   run-etl:
     environment: production
@@ -29,8 +32,8 @@ jobs:
       
       - name: Install Playwright Browsers
         run: |
-          # Ensure Playwright Chromium is installed for VisionTwitterExtractor
-          playwright install chromium
+          $VENV_ACTIVATE
+          python -m playwright install chromium
       
       - name: Validate Secrets
         run: |
