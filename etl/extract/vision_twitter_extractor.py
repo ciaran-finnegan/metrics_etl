@@ -42,6 +42,8 @@ class VisionTwitterExtractor:
         self.screenshots_dir = self.params.get('screenshots_dir', 'screenshots')
         self.headless = self.params.get('headless', True)
         self.user_data_dir = self.params.get('user_data_dir', os.path.join(tempfile.gettempdir(), 'twitter_browser_data'))
+        # Only capture screenshots when explicitly enabled (reduces noise)
+        self.take_screenshots = self.params.get('take_screenshots', False)
         
         # OpenAI configuration from environment
         self.openai_api_key = os.environ.get('OPENAI_API_KEY', '')
@@ -243,8 +245,10 @@ class VisionTwitterExtractor:
             await self.page.goto("https://twitter.com/i/flow/login", wait_until="domcontentloaded")
             await asyncio.sleep(self._random_delay(1, 2))
             
-            # Take screenshot of initial login page
-            screenshot_path = await self._take_screenshot("initial_login_page")
+            # Take screenshot of initial login page if enabled
+            screenshot_path = None
+            if self.take_screenshots:
+                screenshot_path = await self._take_screenshot("initial_login_page")
             
             # Loop until logged in or max steps reached
             max_steps = 15
@@ -256,8 +260,10 @@ class VisionTwitterExtractor:
                     self.logger.info("Successfully logged into Twitter")
                     return True
                 
-                # Take screenshot of current page
-                screenshot_path = await self._take_screenshot(f"login_step_{step}")
+                # Take screenshot of current page if enabled
+                screenshot_path = None
+                if self.take_screenshots:
+                    screenshot_path = await self._take_screenshot(f"login_step_{step}")
                 
                 # Get page text for context
                 page_text = await self._get_page_text()
@@ -658,6 +664,8 @@ Return a JSON response with the following structure:
                 else:
                     self.logger.info("Form submitted by pressing Enter")
                     await self.page.press(selector, "Enter")
+                # Indicate the action succeeded so we can continue to next step
+                return True
                 
             elif action == "click_element":
                 selector = guidance.get("selector", "")
