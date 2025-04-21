@@ -22,6 +22,13 @@ jobs:
           mkdir -p "$RUNNER_TOOL_CACHE" "$RUNNER_TEMP" "$HOME"
       - uses: actions/checkout@v4
       
+      - name: Set up Rust (for building some Python deps like tiktoken)
+        run: |
+          if ! command -v cargo >/dev/null; then
+            curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path
+            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          fi
+      
       - name: Set up Python virtual environment & install deps
         run: |
           python3 -m venv venv
