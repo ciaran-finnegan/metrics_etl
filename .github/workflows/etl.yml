@@ -37,6 +37,9 @@ jobs:
           python3 -m venv venv
           source venv/bin/activate
           python -m pip install --upgrade pip
+          # Allow building PyO3-based packages (e.g. tiktoken) on Python 3.13
+          export PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
+          pip install --no-binary :all: tiktoken || true  # pre‑build to show clearer error if it fails
           pip install -r requirements.txt
           echo "VENV_ACTIVATE=source $(pwd)/venv/bin/activate" >> $GITHUB_ENV
       
