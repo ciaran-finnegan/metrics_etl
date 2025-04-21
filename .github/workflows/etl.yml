@@ -115,11 +115,30 @@ jobs:
             brew install --cask --no-quarantine chromium
           fi
 
-          # Resolve the actual executable path regardless of version / CPU arch
-          CHROMIUM_BIN=$(ls -d "$BREW_PREFIX"/Caskroom/chromium/*/Chromium.app/Contents/MacOS/Chromium | head -n 1)
+          # Resolve the actual executable path.  Homebrew sometimes moves the
+          # .app into /Applications and only leaves a wrapper script in
+          # /usr/local/bin.  Try several strategies until one works.
 
-          if [ ! -x "$CHROMIUM_BIN" ]; then
-            echo "Could not locate Chromium executable under $BREW_PREFIX/Caskroom/chromium" >&2
+          # 1) traditional Caskroom location
+          CHROMIUM_BIN=$(ls -d "$BREW_PREFIX"/Caskroom/chromium/*/Chromium.app/Contents/MacOS/Chromium 2>/dev/null | head -n 1 || true)
+
+          # 2) moved to /Applications by brew
+          if [ -z "$CHROMIUM_BIN" ]; then
+            if [ -x "/Applications/Chromium.app/Contents/MacOS/Chromium" ]; then
+              CHROMIUM_BIN="/Applications/Chromium.app/Contents/MacOS/Chromium"
+            fi
+          fi
+
+          # 3) follow the wrapper script installed by brew
+          if [ -z "$CHROMIUM_BIN" ]; then
+            WRAPPER=$(command -v chromium || true)
+            if [ -n "$WRAPPER" ]; then
+              CHROMIUM_BIN=$(readlink "$WRAPPER" || echo "$WRAPPER")
+            fi
+          fi
+
+          if [ -z "$CHROMIUM_BIN" ] || [ ! -x "$CHROMIUM_BIN" ]; then
+            echo "Could not locate Chromium executable after installation" >&2
             exit 1
           fi
 
