@@ -8,6 +8,9 @@ jobs:
   run-etl:
     environment: production
     runs-on: [self-hosted, macOS, ARM64]
+    env:
+      RUNNER_TOOL_CACHE: ${{ github.workspace }}/_tool
+      RUNNER_TEMP: ${{ github.workspace }}/_temp
     steps:
       - uses: actions/checkout@v4
       
@@ -58,6 +61,11 @@ jobs:
             exit 1
           fi
           echo "All required secrets are present"
+      
+      - name: Prepare runner directories
+        run: |
+          mkdir -p "$RUNNER_TOOL_CACHE"
+          mkdir -p "$RUNNER_TEMP"
       
       - name: Run ETL
         env:
