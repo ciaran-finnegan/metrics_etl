@@ -28,13 +28,14 @@ class VisionTwitterExtractor:
     
     def __init__(self, params: Dict[str, Any] = None):
         """Initialize the Twitter extractor."""
-        self.params = params or {}
+        # Read credentials and API keys directly from environment variables
+        self.username = os.environ.get('TWITTER_USERNAME', '')
+        self.password = os.environ.get('TWITTER_PASSWORD', '')
+        self.verification_code = os.environ.get('TWITTER_VERIFICATION_CODE', '')
+        self.email = os.environ.get('TWITTER_EMAIL', '')
         
-        # Extract parameters with defaults
-        self.username = self.params.get('username', '')
-        self.password = self.params.get('password', '')
-        self.verification_code = self.params.get('verification_code', '')
-        self.email = self.params.get('email', '')
+        # Parameters unrelated to secrets
+        self.params = params or {}
         self.handles = self.params.get('handles', [])
         self.max_tweets_per_handle = self.params.get('max_tweets_per_handle', 10)
         self.output_file = self.params.get('output_file', 'twitter_extraction_results.json')
@@ -42,8 +43,8 @@ class VisionTwitterExtractor:
         self.headless = self.params.get('headless', True)
         self.user_data_dir = self.params.get('user_data_dir', os.path.join(tempfile.gettempdir(), 'twitter_browser_data'))
         
-        # OpenAI configuration
-        self.openai_api_key = self.params.get('openai_api_key') or os.environ.get('OPENAI_API_KEY', '')
+        # OpenAI configuration from environment
+        self.openai_api_key = os.environ.get('OPENAI_API_KEY', '')
         self.model = self.params.get('model', 'gpt-4o')
         
         # OpenAI client

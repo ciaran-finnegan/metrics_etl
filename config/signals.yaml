@@ -15,10 +15,6 @@ signals:
       module: 'etl.extract.vision_twitter_extractor'
       class: 'VisionTwitterExtractor'
       params:
-        email: '{{ TWITTER_EMAIL }}'
-        username: '{{ TWITTER_USERNAME }}'
-        password: '{{ TWITTER_PASSWORD }}'
-        openai_api_key: '{{ OPENAI_API_KEY }}'
         output_file: data/extracted/financial_tweets_login.json
         handles:
           - artemis
@@ -62,10 +58,6 @@ signals:
       module: 'etl.extract.vision_twitter_extractor'
       class: 'VisionTwitterExtractor'
       params:
-        email: '{{ TWITTER_EMAIL }}'
-        username: '{{ TWITTER_USERNAME }}'
-        password: '{{ TWITTER_PASSWORD }}'
-        openai_api_key: '{{ OPENAI_API_KEY }}'
         output_file: data/extracted/financial_tweets_vision.json
         handles:
           - artemis
