@@ -15,7 +15,6 @@ signals:
       module: 'etl.extract.vision_twitter_extractor'
       class: 'VisionTwitterExtractor'
       params:
-        take_screenshots: false
         output_file: data/extracted/financial_tweets_login.json
         handles:
           - artemis
@@ -59,7 +58,6 @@ signals:
       module: 'etl.extract.vision_twitter_extractor'
       class: 'VisionTwitterExtractor'
       params:
-        take_screenshots: false
         output_file: data/extracted/financial_tweets_vision.json
         handles:
           - artemis
