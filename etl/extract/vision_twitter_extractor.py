@@ -196,6 +196,16 @@ class VisionTwitterExtractor:
             user_data_path = os.path.abspath(self.user_data_dir)
             self.logger.info(f"Using browser profile directory: {user_data_path}")
 
+            # If the user has provided a system Chrome path via env var, prefer that over the bundled browser
+            system_chrome_path = os.environ.get("PLAYWRIGHT_CHROME_PATH")
+            if system_chrome_path and os.path.isfile(system_chrome_path):
+                self.logger.info(f"Using system Chrome executable from PLAYWRIGHT_CHROME_PATH: {system_chrome_path}")
+                browser_kwargs = dict(
+                    executable_path=system_chrome_path,
+                )
+            else:
+                browser_kwargs = {}
+
             # Enhanced stealth scripts from ZenRows
             await self._inject_enhanced_stealth_scripts()
             
@@ -204,7 +214,8 @@ class VisionTwitterExtractor:
                 user_data_dir=user_data_path,
                 headless=self.headless,
                 args=browser_args,
-                **context_params
+                **context_params,
+                **browser_kwargs,
             )
             
             if len(self.browser.pages) > 0:
