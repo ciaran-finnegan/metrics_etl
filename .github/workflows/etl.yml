@@ -11,13 +11,20 @@ jobs:
     env:
       RUNNER_TOOL_CACHE: ${{ github.workspace }}/_tool
       RUNNER_TEMP: ${{ github.workspace }}/_temp
+      AGENT_TOOLSDIRECTORY: ${{ github.workspace }}/_tool
     steps:
+      - name: Prepare runner directories
+        run: |
+          mkdir -p "$RUNNER_TOOL_CACHE"
+          mkdir -p "$RUNNER_TEMP"
       - uses: actions/checkout@v4
       
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
+        env:
+          AGENT_TOOLSDIRECTORY: ${{ github.workspace }}/_tool
       
       - name: Install dependencies
         run: |
@@ -61,11 +68,6 @@ jobs:
             exit 1
           fi
           echo "All required secrets are present"
-      
-      - name: Prepare runner directories
-        run: |
-          mkdir -p "$RUNNER_TOOL_CACHE"
-          mkdir -p "$RUNNER_TEMP"
       
       - name: Run ETL
         env:
