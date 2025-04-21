@@ -88,68 +88,23 @@ jobs:
           fi
           echo "All required secrets are present"
       
-      - name: Install Google Chrome via Homebrew (macOS)
+      - name: Install Apple‑silicon Google Chrome
         if: runner.os == 'macOS'
         run: |
           set -eo pipefail
-          # Ensure the runner user can write to Homebrew directories (some
-          # self‑hosted runners install Homebrew as root which blocks `brew`)
-          BREW_PREFIX="$(brew --prefix 2>/dev/null || true)"
-          if [ -z "$BREW_PREFIX" ]; then
-            echo "Homebrew not found; installing is out of scope for this workflow"
-            exit 1
-          fi
+          # Download the latest "universal" dmg – it contains both x64 and arm64
+          curl -L -o chrome.dmg \
+               "https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg"
 
-          echo "Homebrew prefix is $BREW_PREFIX"
+          # Mount it, copy the .app, unmount
+          hdiutil attach chrome.dmg -mountpoint /Volumes/Chrome -nobrowse -quiet
+          cp -R "/Volumes/Chrome/Google Chrome.app" "$HOME"
+          hdiutil detach /Volumes/Chrome -quiet
+          rm chrome.dmg
 
-          # Fix common permission issues so `brew install` does not fail
-          sudo chown -R "$(whoami)" "$BREW_PREFIX" 2>/dev/null || true
-          sudo chown -R "$(whoami)" /usr/local/Cellar 2>/dev/null || true
-          sudo chown -R "$(whoami)" /usr/local/var/homebrew 2>/dev/null || true
-
-          # Install or upgrade Google Chrome.  If the app bundle is already in
-          # /Applications but brew does not know about it, skip installation.
-          if [ -d "/Applications/Google Chrome.app" ]; then
-            echo "Google Chrome.app already present in /Applications – skipping brew install"
-          elif brew list --cask google-chrome >/dev/null 2>&1; then
-            echo "Google Chrome already installed via Homebrew – upgrading to make sure it is fresh"
-            brew upgrade --cask google-chrome || true
-          else
-            brew install --cask --no-quarantine google-chrome
-          fi
-
-          # Resolve the actual executable path.  Homebrew sometimes moves the
-          # .app into /Applications and only leaves a wrapper script in
-          # /usr/local/bin.  Try several strategies until one works.
-
-          # 1) traditional Caskroom location (Google Chrome)
-          CHROME_BIN=$(ls -d "$BREW_PREFIX"/Caskroom/google-chrome/*/Google\ Chrome.app/Contents/MacOS/Google\ Chrome 2>/dev/null | head -n 1 || true)
-
-          # 2) moved to /Applications by brew
-          if [ -z "$CHROME_BIN" ]; then
-            if [ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
-              CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-            fi
-          fi
-
-          # 3) follow the wrapper script installed by brew
-          if [ -z "$CHROME_BIN" ]; then
-            WRAPPER=$(command -v google-chrome || true)
-            if [ -n "$WRAPPER" ]; then
-              CHROME_BIN=$(readlink "$WRAPPER" || echo "$WRAPPER")
-            fi
-          fi
-
-          if [ -z "$CHROME_BIN" ] || [ ! -x "$CHROME_BIN" ]; then
-            echo "Could not locate Google Chrome executable after installation" >&2
-            exit 1
-          fi
-
-          echo "Using Google Chrome executable at: $CHROME_BIN"
-
-          # Export for subsequent steps and for any child shells
+          CHROME_BIN="$HOME/Google Chrome.app/Contents/MacOS/Google Chrome"
+          echo "Playwright will use: $CHROME_BIN"
           echo "PLAYWRIGHT_CHROME_PATH=$CHROME_BIN" >> $GITHUB_ENV
-          export PLAYWRIGHT_CHROME_PATH="$CHROME_BIN"
       
       - name: Run ETL
         env:
