@@ -48,6 +48,13 @@ jobs:
           $VENV_ACTIVATE
           python -m playwright install chromium
       
+      - name: Unquarantine Playwright browsers (macOS)
+        run: |
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            echo "Removing quarantine attribute from Playwright browser binaries"
+            find "$HOME/Library/Caches/ms-playwright" -exec xattr -d com.apple.quarantine {} \; || true
+          fi
+      
       - name: Validate Secrets
         run: |
           # Check if all required secrets are present
