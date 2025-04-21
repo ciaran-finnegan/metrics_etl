@@ -39,7 +39,18 @@ class VisionTwitterExtractor:
         self.handles = self.params.get('handles', [])
         self.max_tweets_per_handle = self.params.get('max_tweets_per_handle', 10)
         self.output_file = self.params.get('output_file', 'twitter_extraction_results.json')
-        self.screenshots_dir = self.params.get('screenshots_dir', 'screenshots')
+        raw_ss_dir = self.params.get('screenshots_dir', 'screenshots')
+        # If path is absolute, use as‑is. If it's relative and already starts with 'data', keep it.
+        # Otherwise, prepend 'data/' so all screenshots land under the data folder.
+        if os.path.isabs(raw_ss_dir):
+            self.screenshots_dir = raw_ss_dir
+        elif raw_ss_dir.startswith('data' + os.sep):
+            self.screenshots_dir = raw_ss_dir  # already under data/
+        else:
+            self.screenshots_dir = os.path.join('data', raw_ss_dir)
+        
+        # Ensure the directory exists
+        os.makedirs(self.screenshots_dir, exist_ok=True)
         self.headless = self.params.get('headless', True)
         self.user_data_dir = self.params.get('user_data_dir', os.path.join(tempfile.gettempdir(), 'twitter_browser_data'))
         
@@ -53,7 +64,6 @@ class VisionTwitterExtractor:
         
         # Create directories
         os.makedirs(os.path.dirname(self.output_file), exist_ok=True)
-        os.makedirs(self.screenshots_dir, exist_ok=True)
         
         # Playwright resources
         self.playwright = None
